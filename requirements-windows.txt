@@ -1,0 +1,16 @@
+numpy==1.26.4
+opencv-python==4.11.0.86
+paddleocr==3.4.0
+paddlex==3.4.3
+PyMuPDF==1.27.2.2
+pdfplumber==0.11.9
+pypdf==6.9.2
+ocrmypdf==16.13.0
+img2pdf==0.6.3
+pikepdf==10.5.1
+ezdxf==1.4.3
+matplotlib==3.10.8
+pyclipper==1.4.0
+Shapely==2.1.2
+tokenizers==0.22.2
+chardet==7.4.0.post2

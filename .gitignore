@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+build/
+dist/
+ocr_output/
+*.ocr.txt
+*.ocr.json
+*.searchable.pdf
+Thumbs.db
+.DS_Store
