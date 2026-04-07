@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build release ZIP
+        run: |
+          mkdir -p dist/ocrx-engineering-drawings
+          rsync -a \
+            --exclude ".git" \
+            --exclude "dist" \
+            ./ dist/ocrx-engineering-drawings/
+          cd dist
+          zip -r ocrx-engineering-drawings-windows.zip ocrx-engineering-drawings
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/ocrx-engineering-drawings-windows.zip
+          generate_release_notes: true

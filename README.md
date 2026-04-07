@@ -1,5 +1,10 @@
 # OCRX Engineering Drawings
 
+[![Release](https://img.shields.io/github/v/release/aeewws/ocrx-engineering-drawings?display_name=tag)](https://github.com/aeewws/ocrx-engineering-drawings/releases/latest)
+[![License](https://img.shields.io/github/license/aeewws/ocrx-engineering-drawings)](./LICENSE)
+[![Windows](https://img.shields.io/badge/platform-Windows-0078D6)](https://github.com/aeewws/ocrx-engineering-drawings)
+[![Codex](https://img.shields.io/badge/agent-Codex-black)](https://github.com/aeewws/ocrx-engineering-drawings)
+
 面向工程图纸的 Windows-first OCR/CAD 工具包。它把真实生产里最有用的两条路线封成了可直接调用的主入口:
 
 - `ocrsmart` / `ocrsmartbatch`: faster default for most drawing work
@@ -8,6 +13,37 @@
 The project packages a practical workflow for engineering drawings, scanned PDFs, native vector PDFs, DXF, and DWG.
 
 It is designed for Codex users who want one install step and a small set of commands that agents can reliably reuse.
+
+## Download
+
+- Latest release page:
+  `https://github.com/aeewws/ocrx-engineering-drawings/releases/latest`
+- Direct release ZIP:
+  `https://github.com/aeewws/ocrx-engineering-drawings/releases/latest/download/ocrx-engineering-drawings-windows.zip`
+- Source ZIP:
+  `https://github.com/aeewws/ocrx-engineering-drawings/archive/refs/heads/main.zip`
+
+If you just want the fastest path on Windows, use the release ZIP or the online installer below.
+
+## Fast Install
+
+Online bootstrap install:
+
+```powershell
+$tmp = Join-Path $env:TEMP "ocrx-install-online.ps1"
+Invoke-WebRequest "https://raw.githubusercontent.com/aeewws/ocrx-engineering-drawings/main/install-online.ps1" -OutFile $tmp
+powershell -ExecutionPolicy Bypass -File $tmp
+```
+
+Local release ZIP install:
+
+1. Download `ocrx-engineering-drawings-windows.zip` from Releases.
+2. Extract it anywhere.
+3. Run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install-codex.ps1
+```
 
 ## Why This Repo
 
@@ -59,6 +95,17 @@ This installer will:
 - copy `ocrx.py` into `~/.codex/tools/ocrx`
 - generate wrapper commands in `%LOCALAPPDATA%\OpenAI\Codex\bin`
 - optionally append a short routing hint to `~/.codex/AGENTS.md`
+
+## Primary Commands
+
+```powershell
+ocrsmart       # smart default for day-to-day engineering drawings
+ocrbest        # stronger default for harder pages and higher recall
+ocrsmartbatch  # smart whole-folder processing
+ocrbestbatch   # stronger whole-folder processing
+ocrcad         # explicit CAD route for DWG/DXF
+ocrx doctor    # environment health check
+```
 
 ## Usage
 
@@ -135,6 +182,10 @@ This repo does not bundle ODA File Converter.
 - No telemetry or cloud upload is built into the tool
 - Your files stay local unless you choose to sync the outputs elsewhere
 
+## Release Notes
+
+For version history, see [CHANGELOG.md](./CHANGELOG.md).
+
 ## Agent Hint
 
 If you want new Codex threads to discover the two drawing presets automatically, the installer can maintain this short hint in `~/.codex/AGENTS.md`:
@@ -149,6 +200,14 @@ If you want new Codex threads to discover the two drawing presets automatically,
 - NVIDIA GPU: recommended for PaddleOCR-heavy workloads
 - Codex CLI / Codex app shell use: supported
 - Pure shell use without Codex: also supported after install
+
+## Repository Layout
+
+- `tools/ocrx.py`: OCR/PDF/CAD entrypoint
+- `scripts/install-codex.ps1`: local installer into Codex paths
+- `install-online.ps1`: download latest release and run installer
+- `templates/AGENTS.snippet.md`: short routing hint for fresh threads
+- `docs/PIPELINES.md`: high-level route explanation
 
 ## License
 

@@ -103,11 +103,11 @@ if (-not (Test-Path $envPython)) {
 
 Invoke-External -Exe $envPython -ArgumentList @("-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel")
 Invoke-External -Exe $envPython -ArgumentList @("-m", "pip", "uninstall", "-y", "onnxruntime")
-Invoke-External -Exe $envPython -ArgumentList @("-m", "pip", "install", "paddlepaddle-gpu==3.3.0", "-f", "https://www.paddlepaddle.org.cn/packages/stable/cu129/")
-Invoke-External -Exe $envPython -ArgumentList @("-m", "pip", "install", "--force-reinstall", "onnxruntime-gpu==1.23.2")
-Invoke-External -Exe $envPython -ArgumentList @("-m", "pip", "install", "-r", $requirementsPath)
+Invoke-External -Exe $envPython -ArgumentList @("-m", "pip", "install", "--no-warn-conflicts", "paddlepaddle-gpu==3.3.0", "-f", "https://www.paddlepaddle.org.cn/packages/stable/cu129/")
+Invoke-External -Exe $envPython -ArgumentList @("-m", "pip", "install", "--force-reinstall", "--no-warn-conflicts", "onnxruntime-gpu==1.23.2")
+Invoke-External -Exe $envPython -ArgumentList @("-m", "pip", "install", "--no-warn-conflicts", "-r", $requirementsPath)
 # Install RapidOCR components without letting pip pull the CPU-only onnxruntime package back in.
-Invoke-External -Exe $envPython -ArgumentList @("-m", "pip", "install", "--force-reinstall", "--no-deps", "rapidocr-onnxruntime==1.4.4", "rapid-latex-ocr==0.0.9")
+Invoke-External -Exe $envPython -ArgumentList @("-m", "pip", "install", "--force-reinstall", "--no-deps", "--no-warn-conflicts", "rapidocr-onnxruntime==1.4.4", "rapid-latex-ocr==0.0.9")
 
 Copy-Item -LiteralPath $toolSource -Destination $toolTarget -Force
 
