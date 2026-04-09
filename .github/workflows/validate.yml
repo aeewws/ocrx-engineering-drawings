@@ -37,3 +37,8 @@ jobs:
               throw "install-online.ps1 is missing expected parameter: $name"
             }
           }
+
+      - name: Smoke test install-online forwarding
+        shell: pwsh
+        run: |
+          .\tests\Test-InstallOnline.ps1
