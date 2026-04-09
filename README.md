@@ -35,6 +35,8 @@ Invoke-WebRequest "https://raw.githubusercontent.com/aeewws/ocrx-engineering-dra
 powershell -ExecutionPolicy Bypass -File $tmp
 ```
 
+The online bootstrap script also mirrors the most common installer options, including `-CodexHome`, `-CodexBin`, `-EnvName`, and `-SkipAgentsHint`.
+
 Local release ZIP install:
 
 1. Download `ocrx-engineering-drawings-windows.zip` from Releases.
@@ -49,7 +51,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install-codex.ps1
 
 - Native PDF parse first, OCR second
 - DWG/DXF direct text extraction first, OCR fallback second
-- PaddleOCR GPU as the main heavy-duty OCR engine
+- PaddleOCR GPU as the main heavy-duty OCR engine when an NVIDIA/CUDA-capable setup is available
 - RapidOCR path kept available for fast fallback and mixed workloads
 - Codex-friendly wrapper commands with stable defaults
 - Batch commands for real folders instead of single-file demos
@@ -91,6 +93,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install-codex.ps1
 This installer will:
 
 - create or reuse `~/.codex/envs/paddleocr-clean310`
+- probe Python 3.10 via `py -3.10`, `python310`, `python`, and `python3`
 - install the pinned OCR/PDF/CAD Python dependencies
 - copy `ocrx.py` into `~/.codex/tools/ocrx`
 - generate wrapper commands in `%LOCALAPPDATA%\OpenAI\Codex\bin`
@@ -197,7 +200,7 @@ If you want new Codex threads to discover the two drawing presets automatically,
 ## Support Matrix
 
 - Windows: first-class target
-- NVIDIA GPU: recommended for PaddleOCR-heavy workloads
+- NVIDIA GPU / CUDA-capable setup: recommended for PaddleOCR-heavy workloads and the default one-step install path
 - Codex CLI / Codex app shell use: supported
 - Pure shell use without Codex: also supported after install
 

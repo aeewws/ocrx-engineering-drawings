@@ -1,5 +1,9 @@
 param(
-    [string]$ReleaseZipUrl = "https://github.com/aeewws/ocrx-engineering-drawings/releases/latest/download/ocrx-engineering-drawings-windows.zip"
+    [string]$ReleaseZipUrl = "https://github.com/aeewws/ocrx-engineering-drawings/releases/latest/download/ocrx-engineering-drawings-windows.zip",
+    [string]$CodexHome,
+    [string]$CodexBin,
+    [string]$EnvName,
+    [switch]$SkipAgentsHint
 )
 
 $ErrorActionPreference = "Stop"
@@ -23,4 +27,21 @@ if (-not $installer) {
 }
 
 Write-Host "Running installer..." -ForegroundColor Cyan
-powershell -ExecutionPolicy Bypass -File $installer.FullName
+$invokeArgs = @("-ExecutionPolicy", "Bypass", "-File", $installer.FullName)
+if ($PSBoundParameters.ContainsKey("CodexHome")) {
+    $invokeArgs += @("-CodexHome", $CodexHome)
+}
+if ($PSBoundParameters.ContainsKey("CodexBin")) {
+    $invokeArgs += @("-CodexBin", $CodexBin)
+}
+if ($PSBoundParameters.ContainsKey("EnvName")) {
+    $invokeArgs += @("-EnvName", $EnvName)
+}
+if ($SkipAgentsHint) {
+    $invokeArgs += "-SkipAgentsHint"
+}
+
+& powershell @invokeArgs
+if ($LASTEXITCODE -ne 0) {
+    throw "Installer exited with code $LASTEXITCODE."
+}

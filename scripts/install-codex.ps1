@@ -11,6 +11,7 @@ Set-StrictMode -Version Latest
 function Resolve-Python310 {
     $candidates = @(
         @("py", "-3.10"),
+        @("python310"),
         @("python"),
         @("python3")
     )

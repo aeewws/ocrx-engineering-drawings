@@ -24,6 +24,29 @@ jobs:
           cd dist
           zip -r ocrx-engineering-drawings-windows.zip ocrx-engineering-drawings
 
+      - name: Verify release ZIP contents
+        run: |
+          python - <<'PY'
+          import zipfile
+          from pathlib import Path
+
+          zip_path = Path("dist/ocrx-engineering-drawings-windows.zip")
+          expected = {
+              "ocrx-engineering-drawings/install-online.ps1",
+              "ocrx-engineering-drawings/scripts/install-codex.ps1",
+              "ocrx-engineering-drawings/tools/ocrx.py",
+          }
+
+          with zipfile.ZipFile(zip_path) as zf:
+              names = set(zf.namelist())
+
+          missing = sorted(name for name in expected if name not in names)
+          if missing:
+              raise SystemExit(
+                  "Release ZIP missing expected files: " + ", ".join(missing)
+              )
+          PY
+
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
