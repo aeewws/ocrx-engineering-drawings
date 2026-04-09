@@ -224,6 +224,65 @@ def gpu_provider_options() -> list[Any]:
     return providers
 
 
+def current_python_scripts_dir() -> Path | None:
+    python_path = Path(sys.executable).resolve()
+    parent = python_path.parent
+    if parent.name.lower() == "scripts":
+        return parent
+    scripts_dir = parent / "Scripts"
+    return scripts_dir if scripts_dir.exists() else None
+
+
+def resolve_env_executable(name: str) -> str | None:
+    scripts_dir = current_python_scripts_dir()
+    if scripts_dir is None:
+        return None
+    for candidate in (scripts_dir / f"{name}.exe", scripts_dir / f"{name}.cmd", scripts_dir / name):
+        if candidate.exists():
+            return str(candidate)
+    return None
+
+
+def resolve_tesseract_executable() -> str | None:
+    exe = shutil.which("tesseract")
+    if exe:
+        return exe
+    if os.name == "nt":
+        for env_name in ("ProgramFiles", "ProgramFiles(x86)"):
+            root = os.environ.get(env_name)
+            if not root:
+                continue
+            candidate = Path(root) / "Tesseract-OCR" / "tesseract.exe"
+            if candidate.exists():
+                return str(candidate.resolve())
+    return None
+
+
+def resolve_ocrmypdf_executable() -> str | None:
+    env_exe = resolve_env_executable("ocrmypdf")
+    if env_exe:
+        return env_exe
+    return shutil.which("ocrmypdf")
+
+
+def subprocess_search_path(extra_dirs: Iterable[Path | str]) -> str:
+    parts: list[str] = []
+    seen: set[str] = set()
+    for entry in extra_dirs:
+        text = str(entry)
+        if not text:
+            continue
+        lowered = text.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        parts.append(text)
+    existing = os.environ.get("PATH", "")
+    if existing:
+        parts.append(existing)
+    return os.pathsep.join(parts)
+
+
 def patch_math_onnx_sessions() -> None:
     global MATH_ORT_PATCHED
     if MATH_ORT_PATCHED:
@@ -643,7 +702,7 @@ def tesseract_ocr_text(
     psm: str,
     whitelist: str,
 ) -> str:
-    exe = shutil.which("tesseract")
+    exe = resolve_tesseract_executable()
     if not exe:
         return ""
     cmd = [
@@ -658,7 +717,9 @@ def tesseract_ocr_text(
         f"tessedit_char_whitelist={whitelist}",
     ]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        env = os.environ.copy()
+        env["PATH"] = subprocess_search_path([Path(exe).parent])
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False, env=env)
         return result.stdout.strip()
     except Exception:
         return ""
@@ -2341,8 +2402,12 @@ def maybe_make_searchable_pdf(
 ) -> Path | None:
     if input_path.suffix.lower() != ".pdf":
         return None
-    exe = shutil.which("ocrmypdf")
+    exe = resolve_ocrmypdf_executable()
     if not exe:
+        return None
+    tesseract_exe = resolve_tesseract_executable()
+    if not tesseract_exe:
+        print("SEARCHABLE_PDF_WARNING: tesseract not found; skipping searchable PDF generation.")
         return None
 
     out_pdf = output_dir / f"{input_path.stem}.searchable.pdf"
@@ -2358,7 +2423,10 @@ def maybe_make_searchable_pdf(
         str(out_pdf),
     ]
     try:
-        subprocess.run(cmd, check=True)
+        env = os.environ.copy()
+        extra_dirs: list[Path | str] = [Path(exe).parent, Path(tesseract_exe).parent]
+        env["PATH"] = subprocess_search_path(extra_dirs)
+        subprocess.run(cmd, check=True, env=env)
         return out_pdf
     except subprocess.CalledProcessError as error:
         print(f"SEARCHABLE_PDF_WARNING: {error}")
@@ -2965,6 +3033,8 @@ def version_or_missing(module_name: str) -> str:
 def run_doctor_command() -> int:
     prepare_onnxruntime()
     oda_converter = detect_oda_converter()
+    tesseract_exe = resolve_tesseract_executable()
+    ocrmypdf_exe = resolve_ocrmypdf_executable()
     print("ocrx doctor")
     print(f"python: {sys.executable}")
     print(f"rapidocr_onnxruntime: {version_or_missing('rapidocr_onnxruntime')}")
@@ -2988,8 +3058,8 @@ def run_doctor_command() -> int:
     print(f"pdfplumber: {version_or_missing('pdfplumber')}")
     print(f"pypdf: {version_or_missing('pypdf')}")
     print(f"odafc: {str(oda_converter) if oda_converter else 'missing'}")
-    print(f"tesseract: {shutil.which('tesseract') or 'missing'}")
-    print(f"ocrmypdf: {shutil.which('ocrmypdf') or 'missing'}")
+    print(f"tesseract: {tesseract_exe or 'missing'}")
+    print(f"ocrmypdf: {ocrmypdf_exe or 'missing'}")
     print(f"pdftoppm: {shutil.which('pdftoppm') or 'missing'}")
     print(f"pdftotext: {shutil.which('pdftotext') or 'missing'}")
     return 0
