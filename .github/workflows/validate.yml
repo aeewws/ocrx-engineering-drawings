@@ -26,3 +26,14 @@ jobs:
         run: |
           $null = [scriptblock]::Create((Get-Content .\scripts\install-codex.ps1 -Raw))
           $null = [scriptblock]::Create((Get-Content .\install-online.ps1 -Raw))
+
+      - name: Validate install-online parameters
+        shell: pwsh
+        run: |
+          $command = Get-Command .\install-online.ps1
+          $expected = @('ReleaseZipUrl', 'CodexHome', 'CodexBin', 'EnvName', 'SkipAgentsHint')
+          foreach ($name in $expected) {
+            if (-not $command.Parameters.ContainsKey($name)) {
+              throw "install-online.ps1 is missing expected parameter: $name"
+            }
+          }
