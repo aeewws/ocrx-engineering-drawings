@@ -11,6 +11,7 @@ Set-StrictMode -Version Latest
 function Resolve-Python310 {
     $candidates = @(
         @("py", "-3.10"),
+        @("python310"),
         @("python"),
         @("python3")
     )
@@ -53,6 +54,16 @@ function Write-AsciiFile {
     [System.IO.File]::WriteAllText($Path, $normalized, [System.Text.Encoding]::ASCII)
 }
 
+function Read-Utf8File {
+    param(
+        [string]$Path
+    )
+    if (-not (Test-Path $Path)) {
+        return ""
+    }
+    return [System.IO.File]::ReadAllText($Path, [System.Text.UTF8Encoding]::new($false))
+}
+
 function Find-OdaConverter {
     $roots = @(
         "C:\\Program Files\\ODA",
@@ -72,6 +83,80 @@ function Find-OdaConverter {
         }
     }
     return $null
+}
+
+function Find-TesseractExecutable {
+    $roots = @(
+        $env:ProgramFiles,
+        ${env:ProgramFiles(x86)}
+    )
+    foreach ($root in $roots) {
+        if (-not $root) {
+            continue
+        }
+        $candidate = Join-Path $root "Tesseract-OCR\tesseract.exe"
+        if (Test-Path $candidate) {
+            return $candidate
+        }
+    }
+    return $null
+}
+
+function Initialize-TesseractBootstrap {
+    param(
+        [string]$CodexHome,
+        [string]$CodexBin
+    )
+
+    $tesseractExe = Find-TesseractExecutable
+    if (-not $tesseractExe) {
+        return $null
+    }
+
+    $systemRoot = Split-Path -Parent $tesseractExe
+    $systemTessdata = Join-Path $systemRoot "tessdata"
+    if (-not (Test-Path $systemTessdata)) {
+        return $tesseractExe
+    }
+
+    $userTessdata = Join-Path $CodexHome "tessdata"
+    New-Item -ItemType Directory -Force -Path $userTessdata | Out-Null
+
+    foreach ($name in @("eng.traineddata", "osd.traineddata", "pdf.ttf")) {
+        $source = Join-Path $systemTessdata $name
+        if (Test-Path $source) {
+            Copy-Item -LiteralPath $source -Destination (Join-Path $userTessdata $name) -Force
+        }
+    }
+
+    foreach ($dirName in @("configs", "tessconfigs", "script")) {
+        $sourceDir = Join-Path $systemTessdata $dirName
+        if (Test-Path $sourceDir) {
+            Copy-Item -LiteralPath $sourceDir -Destination (Join-Path $userTessdata $dirName) -Recurse -Force
+        }
+    }
+
+    $chiSimSource = Join-Path $systemTessdata "chi_sim.traineddata"
+    $chiSimTarget = Join-Path $userTessdata "chi_sim.traineddata"
+    if (Test-Path $chiSimSource) {
+        Copy-Item -LiteralPath $chiSimSource -Destination $chiSimTarget -Force
+    } elseif (-not (Test-Path $chiSimTarget)) {
+        try {
+            Write-Host "Bootstrapping Tesseract chi_sim language data..." -ForegroundColor Cyan
+            Invoke-WebRequest "https://github.com/tesseract-ocr/tessdata/raw/main/chi_sim.traineddata" -OutFile $chiSimTarget
+        } catch {
+            Write-Host "Could not download chi_sim.traineddata automatically. Searchable PDF will still work for installed Tesseract languages." -ForegroundColor Yellow
+        }
+    }
+
+    $tesseractWrapper = @"
+@echo off
+setlocal
+set "TESSDATA_DIR=$userTessdata"
+"$tesseractExe" --tessdata-dir "%TESSDATA_DIR%" %*
+"@
+    Write-AsciiFile -Path (Join-Path $CodexBin "tesseract.cmd") -Content $tesseractWrapper
+    return $tesseractExe
 }
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -103,7 +188,8 @@ if (-not (Test-Path $envPython)) {
 
 Invoke-External -Exe $envPython -ArgumentList @("-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel")
 Invoke-External -Exe $envPython -ArgumentList @("-m", "pip", "uninstall", "-y", "onnxruntime")
-Invoke-External -Exe $envPython -ArgumentList @("-m", "pip", "install", "--no-warn-conflicts", "paddlepaddle-gpu==3.3.0", "-f", "https://www.paddlepaddle.org.cn/packages/stable/cu129/")
+# Paddle's current Windows CUDA 12.9 wheels resolve on the official index as 3.2.2.
+Invoke-External -Exe $envPython -ArgumentList @("-m", "pip", "install", "--no-warn-conflicts", "paddlepaddle-gpu==3.2.2", "-i", "https://www.paddlepaddle.org.cn/packages/stable/cu129/")
 Invoke-External -Exe $envPython -ArgumentList @("-m", "pip", "install", "--force-reinstall", "--no-warn-conflicts", "onnxruntime-gpu==1.23.2")
 Invoke-External -Exe $envPython -ArgumentList @("-m", "pip", "install", "--no-warn-conflicts", "-r", $requirementsPath)
 # Install RapidOCR components without letting pip pull the CPU-only onnxruntime package back in.
@@ -114,8 +200,9 @@ Copy-Item -LiteralPath $toolSource -Destination $toolTarget -Force
 $ocrxWrapper = @"
 @echo off
 setlocal
+set "BIN_DIR=%~dp0"
 set "PYTHON_EXE=$envPython"
-set "PATH=$envScriptsDir;%PATH%"
+set "PATH=%BIN_DIR%;$envScriptsDir;%PATH%"
 "%PYTHON_EXE%" "$toolTarget" %*
 "@
 
@@ -167,10 +254,12 @@ foreach ($name in $wrapperSpecs.Keys) {
     Write-AsciiFile -Path (Join-Path $CodexBin $name) -Content $wrapperSpecs[$name]
 }
 
+$tesseractExe = Initialize-TesseractBootstrap -CodexHome $CodexHome -CodexBin $CodexBin
+
 if (-not $SkipAgentsHint -and (Test-Path $agentsSnippetPath)) {
     $agentsPath = Join-Path $CodexHome "AGENTS.md"
-    $snippet = (Get-Content -LiteralPath $agentsSnippetPath -Raw).Trim()
-    $existing = if (Test-Path $agentsPath) { Get-Content -LiteralPath $agentsPath -Raw } else { "" }
+    $snippet = (Read-Utf8File -Path $agentsSnippetPath).Trim()
+    $existing = Read-Utf8File -Path $agentsPath
     if ($existing -notmatch [regex]::Escape($snippet)) {
         $updated = if ([string]::IsNullOrWhiteSpace($existing)) {
             $snippet + "`r`n"
@@ -186,6 +275,12 @@ if ($odaConverter) {
     Write-Host "ODA File Converter detected: $odaConverter" -ForegroundColor Green
 } else {
     Write-Host "ODA File Converter not detected. DXF is ready now; DWG needs ODA File Converter for conversion." -ForegroundColor Yellow
+}
+
+if ($tesseractExe) {
+    Write-Host "Tesseract detected: $tesseractExe" -ForegroundColor Green
+} else {
+    Write-Host "Tesseract not detected. OCR/PDF/CAD is ready; searchable PDF output needs a local Tesseract install." -ForegroundColor Yellow
 }
 
 Invoke-External -Exe $envPython -ArgumentList @($toolTarget, "doctor")

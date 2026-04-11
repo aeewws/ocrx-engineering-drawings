@@ -35,6 +35,8 @@ Invoke-WebRequest "https://raw.githubusercontent.com/aeewws/ocrx-engineering-dra
 powershell -ExecutionPolicy Bypass -File $tmp
 ```
 
+The online bootstrap script also mirrors the most common installer options, including `-CodexHome`, `-CodexBin`, `-EnvName`, and `-SkipAgentsHint`.
+
 Local release ZIP install:
 
 1. Download `ocrx-engineering-drawings-windows.zip` from Releases.
@@ -49,7 +51,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install-codex.ps1
 
 - Native PDF parse first, OCR second
 - DWG/DXF direct text extraction first, OCR fallback second
-- PaddleOCR GPU as the main heavy-duty OCR engine
+- PaddleOCR GPU as the main heavy-duty OCR engine when an NVIDIA/CUDA-capable setup is available
 - RapidOCR path kept available for fast fallback and mixed workloads
 - Codex-friendly wrapper commands with stable defaults
 - Batch commands for real folders instead of single-file demos
@@ -91,9 +93,11 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install-codex.ps1
 This installer will:
 
 - create or reuse `~/.codex/envs/paddleocr-clean310`
+- probe Python 3.10 via `py -3.10`, `python310`, `python`, and `python3`
 - install the pinned OCR/PDF/CAD Python dependencies
 - copy `ocrx.py` into `~/.codex/tools/ocrx`
 - generate wrapper commands in `%LOCALAPPDATA%\OpenAI\Codex\bin`
+- reuse a local Tesseract install for searchable PDFs when available, and bootstrap `chi_sim` language data when it can
 - optionally append a short routing hint to `~/.codex/AGENTS.md`
 
 ## Primary Commands
@@ -143,6 +147,12 @@ Each input can produce:
 - `*.ocr.json`: structured metadata, page summaries, and OCR source tags
 - optional searchable PDF outputs when PDF OCR mode is requested
 
+Searchable PDF notes:
+
+- OCRX uses `ocrmypdf` plus local Tesseract for this optional path
+- the installer writes a `tesseract` shim into the Codex bin when a local Tesseract install is detected
+- if Simplified Chinese data is missing locally, the installer attempts a best-effort `chi_sim` bootstrap for Windows-first use
+
 ## Native PDF Parsing
 
 If a PDF already contains embedded vector text, `ocrx` reads that text directly with PDF parsers before spending GPU time on OCR.
@@ -166,6 +176,17 @@ The CAD route is:
 5. merge direct CAD text and OCR text conservatively
 
 This is the strongest practical local route for mixed engineering drawings on a Windows workstation without moving to a heavier remote stack.
+
+## Tuning
+
+These environment variables are useful when you want to trade throughput, memory, and pipeline parallelism:
+
+- `OCRX_AUTO_ENGINE=rapid`: lower-VRAM fallback when you explicitly prefer RapidOCR over Paddle
+- `OCRX_PADDLE_REC_BATCH_SIZE=8`: smaller Paddle recognition batches for tighter throughput control
+- `OCRX_DRAWING_PREPARE_WORKERS=1`: reduce CPU-side page preparation fan-out
+- `OCRX_DRAWING_QUEUE_SIZE=2`: keep less prepared work buffered ahead of OCR
+
+For most engineering drawing work, keep the defaults first and only tune when the workstation is under memory or concurrency pressure.
 
 ## ODA Note
 
@@ -197,7 +218,7 @@ If you want new Codex threads to discover the two drawing presets automatically,
 ## Support Matrix
 
 - Windows: first-class target
-- NVIDIA GPU: recommended for PaddleOCR-heavy workloads
+- NVIDIA GPU / CUDA-capable setup: recommended for PaddleOCR-heavy workloads and the default one-step install path
 - Codex CLI / Codex app shell use: supported
 - Pure shell use without Codex: also supported after install
 
