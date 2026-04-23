@@ -13,4 +13,4 @@ matplotlib==3.10.8
 pyclipper==1.4.0
 Shapely==2.1.2
 tokenizers==0.22.2
-chardet==7.4.0.post2
+chardet==7.4.3
