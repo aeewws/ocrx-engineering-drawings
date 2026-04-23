@@ -13,3 +13,11 @@ ocr_output/
 *.searchable.pdf
 Thumbs.db
 .DS_Store
+
+# OS / local files
+.env
+.env.*
+*.log
+tmp/
+temp/
+.ruff_cache/
