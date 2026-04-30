@@ -12,5 +12,5 @@ ezdxf==1.4.3
 matplotlib==3.10.8
 pyclipper==1.4.0
 Shapely==2.1.2
-tokenizers==0.22.2
+tokenizers==0.23.1
 chardet==7.4.3
