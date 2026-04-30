@@ -9,7 +9,7 @@ ocrmypdf==16.13.0
 img2pdf==0.6.3
 pikepdf==10.5.1
 ezdxf==1.4.3
-matplotlib==3.10.8
+matplotlib==3.10.9
 pyclipper==1.4.0
 Shapely==2.1.2
 tokenizers==0.22.2
